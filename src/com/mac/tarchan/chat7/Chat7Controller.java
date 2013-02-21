@@ -22,12 +22,17 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+import javafx.beans.property.Property;
+import javafx.beans.property.SimpleObjectProperty;
+import javafx.concurrent.Service;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 
 /**
@@ -38,7 +43,11 @@ public class Chat7Controller implements Initializable {
 
     private static final Logger log = Logger.getLogger(Chat7Controller.class.getName());
     private FileChooser fileChooser = new FileChooser();
-    private File file;
+//    private File file;
+    private SimpleObjectProperty<File> file = new SimpleObjectProperty<>(this, "file");
+    private ReadLogService readLogService = new ReadLogService();
+    @FXML
+    private VBox root;
     @FXML
     private TextArea console;
     @FXML
@@ -55,6 +64,10 @@ public class Chat7Controller implements Initializable {
         log.addHandler(handler);
     }
 
+    public Property<File> fileProperty() {
+        return file;
+    }
+
     @FXML
     private void handleSend(ActionEvent e) {
         console.appendText(String.format("%s%n", input.textProperty().get()));
@@ -66,7 +79,9 @@ public class Chat7Controller implements Initializable {
         log.info("ファイルを選択します。");
         File f = fileChooser.showOpenDialog(null);
         if (f != null) {
-            openFile(f.toPath());
+            fileProperty().setValue(f);
+            readLogService.restart();
+//            openFile(f.toPath());
         }
     }
 
@@ -74,6 +89,8 @@ public class Chat7Controller implements Initializable {
     public void initialize(URL url, ResourceBundle rb) {
         FileChooser.ExtensionFilter allFilter = new FileChooser.ExtensionFilter("すべてのファイル (*.*)", "*.*");
         fileChooser.getExtensionFilters().add(allFilter);
+
+        console.textProperty().bind(readLogService.valueProperty());
     }
 
     private void openFile(Path path) {
@@ -106,5 +123,49 @@ public class Chat7Controller implements Initializable {
         CharsetDecoder decoder = cs.newDecoder().onMalformedInput(CodingErrorAction.REPLACE).onUnmappableCharacter(CodingErrorAction.REPLACE);
         Reader reader = new InputStreamReader(input, decoder);
         return new BufferedReader(reader);
+    }
+
+    class ReadLogService extends Service<String> {
+
+        @Override
+        protected Task<String> createTask() {
+//            file = TwoFaceController.this.file.get();
+            return new ReadLogTask(fileProperty().getValue().toPath());
+        }
+    }
+
+    class ReadLogTask extends Task<String> {
+
+        private Path path;
+
+        ReadLogTask(Path path) {
+            this.path = path;
+        }
+
+        @Override
+        protected String call() throws Exception {
+            log.log(Level.INFO, "ファイルをオープンします。: {0}", path);
+            int lineCount = 0;
+            StringBuilder buf = new StringBuilder();
+            Charset cs = Charset.forName("JIS");
+            try (BufferedReader reader = newBufferedReader(path, cs)) {
+                while (true) {
+                    String line = reader.readLine();
+                    if (line == null) {
+                        break;
+                    }
+
+                    lineCount++;
+//                    console.appendText(String.format("%s%n", line));
+                    buf.append(String.format("%s%n", line));
+                    updateMessage(line);
+                }
+                log.log(Level.INFO, "{0} 行出力しました。", lineCount);
+                return buf.toString();
+            } catch (IOException ex) {
+                log.log(Level.SEVERE, "ファイルを読み込めません。", ex);
+                throw ex;
+            }
+        }
     }
 }
