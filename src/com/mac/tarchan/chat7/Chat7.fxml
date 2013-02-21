@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import java.lang.*?>
+<?import java.net.*?>
 <?import java.util.*?>
 <?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
@@ -14,7 +15,7 @@
       <menus>
         <Menu mnemonicParsing="false" text="File">
           <items>
-            <MenuItem mnemonicParsing="false" text="New" />
+            <MenuItem mnemonicParsing="false" onAction="#handleConnect" text="New" />
             <MenuItem mnemonicParsing="false" onAction="#handleOpen" text="Open…" />
             <Menu mnemonicParsing="false" text="Open Recent" />
             <SeparatorMenuItem mnemonicParsing="false" />
@@ -25,7 +26,7 @@
             <SeparatorMenuItem mnemonicParsing="false" />
             <MenuItem mnemonicParsing="false" text="Preferences…" />
             <SeparatorMenuItem mnemonicParsing="false" />
-            <MenuItem mnemonicParsing="false" text="Quit" />
+            <MenuItem mnemonicParsing="false" onAction="#handleExit" text="Quit" />
           </items>
         </Menu>
         <Menu mnemonicParsing="false" text="Edit">
@@ -49,27 +50,37 @@
         </Menu>
       </menus>
     </MenuBar>
-    <VBox prefHeight="200.0" prefWidth="100.0" VBox.vgrow="ALWAYS">
+    <StackPane prefHeight="150.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
       <children>
-        <TextArea id="displayBox" fx:id="console" editable="false" focusTraversable="false" prefHeight="252.0" prefWidth="640.0" wrapText="true" VBox.vgrow="ALWAYS" />
-        <HBox fillHeight="false" minHeight="20.0" prefHeight="33.999900000002526" prefWidth="640.0" VBox.vgrow="NEVER">
+        <VBox prefHeight="200.0" prefWidth="100.0" StackPane.alignment="CENTER">
           <children>
-            <TextField id="inputBox" fx:id="input" onAction="#handleSend" prefWidth="200.0" HBox.hgrow="ALWAYS">
-              <HBox.margin>
-                <Insets right="8.0" />
-              </HBox.margin>
-            </TextField>
-            <Button id="sendButton" fx:id="send" mnemonicParsing="false" onAction="#handleSend" text="送信" HBox.hgrow="NEVER">
-              <HBox.margin>
-                <Insets />
-              </HBox.margin>
-            </Button>
+            <TextArea id="displayBox" fx:id="console" editable="false" focusTraversable="false" prefHeight="252.0" prefWidth="640.0" wrapText="true" VBox.vgrow="ALWAYS" />
+            <HBox fillHeight="false" minHeight="20.0" prefHeight="33.999900000002526" prefWidth="640.0" VBox.vgrow="NEVER">
+              <children>
+                <TextField id="inputBox" fx:id="input" onAction="#handleSend" prefWidth="200.0" HBox.hgrow="ALWAYS">
+                  <HBox.margin>
+                    <Insets right="8.0" />
+                  </HBox.margin>
+                </TextField>
+                <Button id="sendButton" fx:id="send" mnemonicParsing="false" onAction="#handleSend" text="送信" HBox.hgrow="NEVER">
+                  <HBox.margin>
+                    <Insets />
+                  </HBox.margin>
+                </Button>
+              </children>
+              <padding>
+                <Insets bottom="8.0" left="12.0" right="12.0" top="8.0" />
+              </padding>
+            </HBox>
           </children>
-          <padding>
-            <Insets bottom="8.0" left="12.0" right="12.0" top="8.0" />
-          </padding>
-        </HBox>
+        </VBox>
+        <Region fx:id="glass" prefHeight="200.0" prefWidth="200.0" styleClass="veil" StackPane.alignment="CENTER">
+          <stylesheets>
+            <URL value="@chat7.css" />
+          </stylesheets>
+        </Region>
+        <ProgressIndicator id="progress" fx:id="loading" maxHeight="44.0" maxWidth="44.0" prefHeight="-1.0" prefWidth="-1.0" progress="0.0" StackPane.alignment="CENTER" />
       </children>
-    </VBox>
+    </StackPane>
   </children>
 </VBox>
