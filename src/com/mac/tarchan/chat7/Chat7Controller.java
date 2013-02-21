@@ -4,6 +4,9 @@
  */
 package com.mac.tarchan.chat7;
 
+import com.mac.tarchan.irc.client.IRCClient;
+import com.mac.tarchan.irc.client.IRCEvent;
+import com.mac.tarchan.irc.client.Reply;
 import com.mac.tarchan.irc.client.util.KanaInputFilter;
 import java.io.BufferedReader;
 import java.io.File;
@@ -57,6 +60,7 @@ public class Chat7Controller implements Initializable {
     private FileChooser fileChooser = new FileChooser();
     private SimpleObjectProperty<File> file = new SimpleObjectProperty<>(this, "file");
     private ReadLogService readLogService = new ReadLogService();
+    private IRCClient irc;
     @FXML
     private VBox root;
     @FXML
@@ -94,6 +98,19 @@ public class Chat7Controller implements Initializable {
     @FXML
     private void handleConnect(ActionEvent e) {
         log.info("IRCに接続します。");
+        try {
+//            System.setProperty("java.net.useSystemProxies", "true");
+            String host = "irc.itcnet.ne.jp";
+            int port = 6667;
+            String nick = "chat7";
+            // TODO irc = IRCClient.createClient(this).connect(host, port, nick);
+            irc = IRCClient.createClient(host, port, nick);
+            irc.addHandler(this);
+            irc.start();
+        } catch (IOException ex) {
+            log.log(Level.SEVERE, "IRCに接続できません。", ex);
+            irc = null;
+        }
     }
 
     @FXML
@@ -111,6 +128,11 @@ public class Chat7Controller implements Initializable {
         glass.visibleProperty().bind(readLogService.runningProperty());
         loading.visibleProperty().bind(readLogService.runningProperty());
         loading.progressProperty().bind(readLogService.progressProperty());
+    }
+
+    @Reply("001")
+    public void welcome(IRCEvent e) {
+        log.log(Level.INFO, "IRCに接続しました: {0}", e);
     }
 
     private void openFile(Path path) {
