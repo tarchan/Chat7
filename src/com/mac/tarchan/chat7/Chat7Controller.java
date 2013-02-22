@@ -7,6 +7,7 @@ package com.mac.tarchan.chat7;
 import com.mac.tarchan.irc.client.IRCClient;
 import com.mac.tarchan.irc.client.IRCEvent;
 import com.mac.tarchan.irc.client.IRCMessage;
+import com.mac.tarchan.irc.client.NumericReply;
 import static com.mac.tarchan.irc.client.NumericReply.*;
 import com.mac.tarchan.irc.client.Reply;
 import com.mac.tarchan.irc.client.util.KanaInputFilter;
@@ -94,7 +95,7 @@ public class Chat7Controller implements Initializable {
         }
 
 //        console.appendText(String.format("%s%n", text));
-        talk(irc.getUserNick(), text, System.currentTimeMillis());
+        talk(System.currentTimeMillis(), irc.getUserNick(), text);
         irc.privmsg(channel, text);
     }
 
@@ -129,6 +130,11 @@ public class Chat7Controller implements Initializable {
         glass.visibleProperty().bind(readLogService.runningProperty());
         loading.visibleProperty().bind(readLogService.runningProperty());
         loading.progressProperty().bind(readLogService.progressProperty());
+        
+//        String[] values = {"399", "400", "401", "598", "599", "600"};
+//        for (String v : values) {
+//            log.log(Level.INFO, "{0} is error {1}", new Object[] {v, NumericReply.isError(v)});
+//        }
     }
 
     private void connect() {
@@ -176,8 +182,8 @@ public class Chat7Controller implements Initializable {
         }
     }
 
-    @Reply(value = "020", property = "message.trail")
-    public void wait(String trail) {
+    @Reply(value = RPL_HELLO, property = "message.trail")
+    public void hello(String trail) {
         console.appendText(String.format("しばらくお待ちください。: %s%n", trail));
     }
 
@@ -196,7 +202,13 @@ public class Chat7Controller implements Initializable {
 
     @Reply("NICK")
     public void nick(IRCEvent e) {
-        
+        IRCMessage msg = e.getMessage();
+        String oldNick = msg.getPrefix().getNick();
+        String newNick = msg.getTrail();
+        echo(String.format("nick change %s to %s.", oldNick, newNick));
+        if (irc.getUserNick().equals(oldNick)) {
+            irc.setUserNick(newNick);
+        }
     }
 
     @Reply("PRIVMSG")
@@ -205,14 +217,19 @@ public class Chat7Controller implements Initializable {
         String nick = msg.getPrefix().getNick();
         String text = msg.getTrail();
         long when = msg.getWhen();
-        talk(nick, text, when);
+        talk(when, nick, text);
     }
 
     private static String getTimeString(long when) {
         return String.format("%tH:%<tM", when);
     }
 
-    private void talk(String nick, String text, long when) {
+    private void echo(String text) {
+        long when = System.currentTimeMillis();
+        console.appendText(String.format("%s %s%n", getTimeString(when), text));
+    }
+
+    private void talk(long when, String nick, String text) {
         console.appendText(String.format("%s %s: %s%n", getTimeString(when), nick, text));
     }
 
