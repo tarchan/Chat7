@@ -6,6 +6,7 @@ package com.mac.tarchan.chat7;
 
 import com.mac.tarchan.irc.client.IRCClient;
 import com.mac.tarchan.irc.client.IRCEvent;
+import static com.mac.tarchan.irc.client.NumericReply.*;
 import com.mac.tarchan.irc.client.Reply;
 import com.mac.tarchan.irc.client.util.KanaInputFilter;
 import java.io.BufferedReader;
@@ -100,13 +101,14 @@ public class Chat7Controller implements Initializable {
         log.info("IRCに接続します。");
         try {
 //            System.setProperty("java.net.useSystemProxies", "true");
-            String host = "irc.itcnet.ne.jp";
+            String host = "irc.ircnet.ne.jp";
             int port = 6667;
+            String enc = "jis";
             String nick = "chat7";
-            // TODO irc = IRCClient.createClient(this).connect(host, port, nick);
-            irc = IRCClient.createClient(host, port, nick);
-            irc.addHandler(this);
-            irc.start();
+            irc = IRCClient.createClient(this).connect(host, port, enc).login(nick, nick, "powered by IRCKit", 0xf, null);
+//            irc = IRCClient.createClient(host, port, nick);
+//            irc.addHandler(this);
+//            irc.start();
         } catch (IOException ex) {
             log.log(Level.SEVERE, "IRCに接続できません。", ex);
             irc = null;
@@ -130,9 +132,15 @@ public class Chat7Controller implements Initializable {
         loading.progressProperty().bind(readLogService.progressProperty());
     }
 
-    @Reply("001")
+    @Reply(RPL_WELCOME)
     public void welcome(IRCEvent e) {
-        log.log(Level.INFO, "IRCに接続しました: {0}", e);
+        log.log(Level.INFO, "IRCに接続しました。: {0}", e);
+    }
+
+    @Reply(value = "PING", property = "message.trail")
+    public void ping(String trail) {
+        log.log(Level.INFO, "継続します。: {0}", trail);
+        irc.pong(trail);
     }
 
     private void openFile(Path path) {
