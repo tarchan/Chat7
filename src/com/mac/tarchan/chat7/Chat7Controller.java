@@ -123,8 +123,8 @@ public class Chat7Controller implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        FileChooser.ExtensionFilter allFilter = new FileChooser.ExtensionFilter("すべてのファイル (*.*)", "*.*");
-        fileChooser.getExtensionFilters().add(allFilter);
+//        FileChooser.ExtensionFilter allFilter = new FileChooser.ExtensionFilter("すべてのファイル (*.*)", "*.*");
+//        fileChooser.getExtensionFilters().add(allFilter);
 
         console.textProperty().bind(readLogService.valueProperty());
         glass.visibleProperty().bind(readLogService.runningProperty());
