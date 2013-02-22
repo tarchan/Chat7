@@ -6,6 +6,7 @@ package com.mac.tarchan.chat7;
 
 import com.mac.tarchan.irc.client.IRCClient;
 import com.mac.tarchan.irc.client.IRCEvent;
+import com.mac.tarchan.irc.client.IRCMessage;
 import static com.mac.tarchan.irc.client.NumericReply.*;
 import com.mac.tarchan.irc.client.Reply;
 import com.mac.tarchan.irc.client.util.KanaInputFilter;
@@ -62,6 +63,8 @@ public class Chat7Controller implements Initializable {
     private SimpleObjectProperty<File> file = new SimpleObjectProperty<>(this, "file");
     private ReadLogService readLogService = new ReadLogService();
     private IRCClient irc;
+    private IrcService ircService = new IrcService();
+    private String channel = "#dameTunes";
     @FXML
     private VBox root;
     @FXML
@@ -81,8 +84,18 @@ public class Chat7Controller implements Initializable {
 
     @FXML
     private void handleSend(ActionEvent e) {
-        console.appendText(String.format("%s%n", input.textProperty().get()));
+        String text = input.textProperty().get();
         input.clear();
+        if (text.isEmpty()) {
+            return;
+        }
+        if (irc == null) {
+            return;
+        }
+
+//        console.appendText(String.format("%s%n", text));
+        talk(irc.getUserNick(), text, System.currentTimeMillis());
+        irc.privmsg(channel, text);
     }
 
     @FXML
@@ -95,11 +108,10 @@ public class Chat7Controller implements Initializable {
 //            openFile(f.toPath());
         }
     }
-    private ReadIrcService readIrcService = new ReadIrcService();
 
     @FXML
     private void handleConnect(ActionEvent e) {
-        readIrcService.start();
+        ircService.start();
     }
 
     @FXML
@@ -126,8 +138,9 @@ public class Chat7Controller implements Initializable {
             String host = "irc.ircnet.ne.jp";
             int port = 6667;
             String enc = "jis";
-            String nick = "chat7";
-            irc = IRCClient.createClient(this).connect(host, port, enc).login(nick, nick, "powered by IRCKit", 0xf, null);
+            String nick = "lchat7";
+            String user = "tarchan";
+            irc = IRCClient.createClient(this).connect(host, port, enc).login(nick, user, "powered by IRCKit", 0xf, null);
 //            irc = IRCClient.createClient(host, port, nick);
 //            irc.addHandler(this);
 //            irc.start();
@@ -137,15 +150,15 @@ public class Chat7Controller implements Initializable {
         }
     }
 
-    class ReadIrcService extends Service<String> {
+    class IrcService extends Service<String> {
 
         @Override
         protected Task<String> createTask() {
-            return new ReadIrcTask();
+            return new IrcTask();
         }
     }
 
-    class ReadIrcTask extends Task<String> {
+    class IrcTask extends Task<String> {
 
         @Override
         protected String call() throws Exception {
@@ -172,12 +185,35 @@ public class Chat7Controller implements Initializable {
     public void welcome(String trail) {
         log.log(Level.INFO, "IRCに接続しました。: {0}", trail);
         console.appendText(String.format("IRCに接続しました。: %s%n", trail));
+        irc.join(channel);
     }
 
     @Reply(value = "PING", property = "message.trail")
     public void ping(String trail) {
         log.log(Level.INFO, "継続します。: {0}", trail);
         irc.pong(trail);
+    }
+
+    @Reply("NICK")
+    public void nick(IRCEvent e) {
+        
+    }
+
+    @Reply("PRIVMSG")
+    public void talk(IRCEvent e) {
+        IRCMessage msg = e.getMessage();
+        String nick = msg.getPrefix().getNick();
+        String text = msg.getTrail();
+        long when = msg.getWhen();
+        talk(nick, text, when);
+    }
+
+    private static String getTimeString(long when) {
+        return String.format("%tH:%<tM", when);
+    }
+
+    private void talk(String nick, String text, long when) {
+        console.appendText(String.format("%s %s: %s%n", getTimeString(when), nick, text));
     }
 
     private void openFile(Path path) {
