@@ -95,9 +95,31 @@ public class Chat7Controller implements Initializable {
 //            openFile(f.toPath());
         }
     }
+    private ReadIrcService readIrcService = new ReadIrcService();
 
     @FXML
     private void handleConnect(ActionEvent e) {
+        readIrcService.start();
+    }
+
+    @FXML
+    private void handleExit(ActionEvent e) {
+        log.log(Level.INFO, "アプリケーションを終了します。");
+        Platform.exit();
+    }
+
+    @Override
+    public void initialize(URL url, ResourceBundle rb) {
+//        FileChooser.ExtensionFilter allFilter = new FileChooser.ExtensionFilter("すべてのファイル (*.*)", "*.*");
+//        fileChooser.getExtensionFilters().add(allFilter);
+
+//        console.textProperty().bind(readLogService.valueProperty());
+        glass.visibleProperty().bind(readLogService.runningProperty());
+        loading.visibleProperty().bind(readLogService.runningProperty());
+        loading.progressProperty().bind(readLogService.progressProperty());
+    }
+
+    private void connect() {
         log.info("IRCに接続します。");
         try {
 //            System.setProperty("java.net.useSystemProxies", "true");
@@ -115,26 +137,41 @@ public class Chat7Controller implements Initializable {
         }
     }
 
-    @FXML
-    private void handleExit(ActionEvent e) {
-        log.log(Level.INFO, "アプリケーションを終了します。");
-        Platform.exit();
+    class ReadIrcService extends Service<String> {
+
+        @Override
+        protected Task<String> createTask() {
+            return new ReadIrcTask();
+        }
     }
 
-    @Override
-    public void initialize(URL url, ResourceBundle rb) {
-//        FileChooser.ExtensionFilter allFilter = new FileChooser.ExtensionFilter("すべてのファイル (*.*)", "*.*");
-//        fileChooser.getExtensionFilters().add(allFilter);
+    class ReadIrcTask extends Task<String> {
 
-        console.textProperty().bind(readLogService.valueProperty());
-        glass.visibleProperty().bind(readLogService.runningProperty());
-        loading.visibleProperty().bind(readLogService.runningProperty());
-        loading.progressProperty().bind(readLogService.progressProperty());
+        @Override
+        protected String call() throws Exception {
+            connect();
+            while (true) {
+                String line = irc.next();
+                if (line == null) {
+                    break;
+                }
+                updateMessage(line);
+                Thread.sleep(10);
+            }
+            log.log(Level.INFO, "IRCを切断します。: {0}", irc);
+            return null;
+        }
     }
 
-    @Reply(RPL_WELCOME)
-    public void welcome(IRCEvent e) {
-        log.log(Level.INFO, "IRCに接続しました。: {0}", e);
+    @Reply(value = "020", property = "message.trail")
+    public void wait(String trail) {
+        console.appendText(String.format("しばらくお待ちください。: %s%n", trail));
+    }
+
+    @Reply(value = RPL_WELCOME, property = "message.trail")
+    public void welcome(String trail) {
+        log.log(Level.INFO, "IRCに接続しました。: {0}", trail);
+        console.appendText(String.format("IRCに接続しました。: %s%n", trail));
     }
 
     @Reply(value = "PING", property = "message.trail")
