@@ -23,6 +23,7 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.ResourceBundle;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
@@ -31,6 +32,8 @@ import java.util.logging.SimpleFormatter;
 import javafx.application.Platform;
 import javafx.beans.property.Property;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
@@ -38,8 +41,12 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
 import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
@@ -51,6 +58,46 @@ import javafx.stage.FileChooser;
 public class Chat7Controller implements Initializable {
 
     private static final Logger log = Logger.getLogger(Chat7Controller.class.getName());
+    @FXML
+    private TableView<Room> channels;
+    @FXML
+    private TableView<User> users;
+    @FXML
+    private TableColumn<Room, String> channelName;
+    @FXML
+    private TableColumn<Room, String> channelMode;
+    @FXML
+    private TableColumn<User, String> userName;
+    @FXML
+    private TableColumn<User, String> userMode;
+
+    public class Room {
+
+        public String name;
+        public String[] users;
+
+        Room(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+    }
+
+    public class User {
+
+        private String name;
+        private String mode;
+
+        User(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+    }
 
     static {
         ConsoleHandler handler = new ConsoleHandler();
@@ -65,7 +112,7 @@ public class Chat7Controller implements Initializable {
     private ReadLogService readLogService = new ReadLogService();
     private IRCClient irc;
     private IrcService ircService = new IrcService();
-    private String channel = "#dameTunes";
+    private String target = "#javabreak";
     @FXML
     private VBox root;
     @FXML
@@ -78,6 +125,8 @@ public class Chat7Controller implements Initializable {
     private Region glass;
     @FXML
     private ProgressIndicator loading;
+    @FXML
+    private TitledPane x1;
 
     public Property<File> fileProperty() {
         return file;
@@ -96,7 +145,7 @@ public class Chat7Controller implements Initializable {
 
 //        console.appendText(String.format("%s%n", text));
         talk(System.currentTimeMillis(), irc.getUserNick(), text);
-        irc.privmsg(channel, text);
+        irc.privmsg(target, text);
     }
 
     @FXML
@@ -130,11 +179,26 @@ public class Chat7Controller implements Initializable {
         glass.visibleProperty().bind(readLogService.runningProperty());
         loading.visibleProperty().bind(readLogService.runningProperty());
         loading.progressProperty().bind(readLogService.progressProperty());
-        
+
 //        String[] values = {"399", "400", "401", "598", "599", "600"};
 //        for (String v : values) {
 //            log.log(Level.INFO, "{0} is error {1}", new Object[] {v, NumericReply.isError(v)});
 //        }
+
+        channelName.setCellValueFactory(new PropertyValueFactory<Room, String>("name"));
+        channelMode.setCellValueFactory(new PropertyValueFactory<Room, String>("mode"));
+        userName.setCellValueFactory(new PropertyValueFactory<User, String>("name"));
+        userMode.setCellValueFactory(new PropertyValueFactory<User, String>("mode"));
+//        ArrayList<Room> list = new ArrayList<>();
+//        Room room1 = new Room("#javabreak");
+//        room1.name = "#javabreak";
+//        list.add(room1);
+//        ObservableList<Room> items = FXCollections.observableArrayList();
+        ObservableList<Room> items = channels.getItems();
+        items.add(new Room("#javabreak"));
+        items.add(new Room("#dameTunes"));
+        items.add(new Room("#irodorie:*.jp"));
+        channels.setItems(items);
     }
 
     private void connect() {
@@ -191,7 +255,7 @@ public class Chat7Controller implements Initializable {
     public void welcome(String trail) {
         log.log(Level.INFO, "IRCに接続しました。: {0}", trail);
         console.appendText(String.format("IRCに接続しました。: %s%n", trail));
-        irc.join(channel);
+        irc.join(target);
     }
 
     @Reply(value = "PING", property = "message.trail")

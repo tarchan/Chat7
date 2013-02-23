@@ -9,3 +9,5 @@ build/
 dist/
 nbproject/private/
 nbproject/configs/
+
+*.bak
