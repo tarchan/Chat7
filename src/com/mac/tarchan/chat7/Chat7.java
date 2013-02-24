@@ -15,13 +15,14 @@ import javafx.stage.Stage;
  * @author Takashi Ogura <tarchan at mac.com>
  */
 public class Chat7 extends Application {
-    
+
     @Override
     public void start(Stage stage) throws Exception {
         Parent root = FXMLLoader.load(getClass().getResource("Chat7.fxml"));
-        
+        root.setUserData(getParameters());
+
         Scene scene = new Scene(root);
-        
+
         stage.setScene(scene);
         stage.setTitle(Chat7.class.getSimpleName());
         stage.show();

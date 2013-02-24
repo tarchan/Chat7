@@ -9,5 +9,6 @@ build/
 dist/
 nbproject/private/
 nbproject/configs/
-
 *.bak
+*backup.xml
+nbproject/UPDATED.TXT

@@ -5,17 +5,22 @@
 <?import java.util.*?>
 <?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
+<?import javafx.scene.input.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.paint.*?>
 <?import javafx.scene.text.*?>
 
 <VBox fx:id="root" prefHeight="400.0" prefWidth="640.0" xmlns:fx="http://javafx.com/fxml" fx:controller="com.mac.tarchan.chat7.Chat7Controller">
   <children>
-    <MenuBar VBox.vgrow="NEVER">
+    <MenuBar useSystemMenuBar="true" VBox.vgrow="NEVER">
       <menus>
         <Menu mnemonicParsing="false" text="File">
           <items>
-            <MenuItem mnemonicParsing="false" onAction="#handleConnect" text="New" />
+            <MenuItem mnemonicParsing="false" onAction="#handleConnect" text="New">
+              <accelerator>
+                <KeyCodeCombination alt="UP" code="N" control="UP" meta="DOWN" shift="UP" shortcut="UP" />
+              </accelerator>
+            </MenuItem>
             <MenuItem mnemonicParsing="false" onAction="#handleOpen" text="Open…" />
             <Menu mnemonicParsing="false" text="Open Recent" />
             <SeparatorMenuItem mnemonicParsing="false" />

@@ -24,11 +24,14 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+import javafx.application.Application.Parameters;
 import javafx.application.Platform;
 import javafx.beans.property.Property;
 import javafx.beans.property.SimpleObjectProperty;
@@ -202,19 +205,25 @@ public class Chat7Controller implements Initializable {
     }
 
     private void connect() {
-        log.info("IRCに接続します。");
         try {
+            log.info("IRCに接続します。");
+            Parameters params = (Parameters) root.getUserData();
+            Map<String, String> named = params.getNamed();
+            log.log(Level.INFO, "コマンドライン引数: {0}", Arrays.asList(named));
 //            System.setProperty("java.net.useSystemProxies", "true");
-            String host = "irc.ircnet.ne.jp";
-            int port = 6667;
-            String enc = "jis";
-            String nick = "lchat7";
-            String user = "tarchan";
-            irc = IRCClient.createClient(this).connect(host, port, enc).login(nick, user, "powered by IRCKit", 0xf, null);
+            String host = named.get("host");
+            int port = Integer.valueOf(named.get("port"));
+            String enc = named.get("encoding");
+            String nick = named.get("nick");
+            String user = named.get("user");
+            String real = named.get("real");
+            int mode = Integer.valueOf(named.get("mode"));
+            String pass = named.get("pass");
+            irc = IRCClient.createClient(this).connect(host, port, enc).login(nick, user, real, mode, pass);
 //            irc = IRCClient.createClient(host, port, nick);
 //            irc.addHandler(this);
 //            irc.start();
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             log.log(Level.SEVERE, "IRCに接続できません。", ex);
             irc = null;
         }
@@ -239,7 +248,7 @@ public class Chat7Controller implements Initializable {
                     break;
                 }
                 updateMessage(line);
-                Thread.sleep(10);
+//                Thread.sleep(10);
             }
             log.log(Level.INFO, "IRCを切断します。: {0}", irc);
             return null;
@@ -255,6 +264,8 @@ public class Chat7Controller implements Initializable {
     public void welcome(String trail) {
         log.log(Level.INFO, "IRCに接続しました。: {0}", trail);
         console.appendText(String.format("IRCに接続しました。: %s%n", trail));
+        channels.getItems().clear();
+        users.getItems().clear();
         irc.join(target);
     }
 
@@ -273,6 +284,39 @@ public class Chat7Controller implements Initializable {
         if (irc.getUserNick().equals(oldNick)) {
             irc.setUserNick(newNick);
         }
+    }
+
+    private void addChannel(String name) {
+        Room room = new Room(name);
+        ObservableList<Room> items = channels.getItems();
+        items.add(room);
+    }
+
+    private void addUser(String channel, String[] names) {
+        ObservableList<User> items = users.getItems();
+        for (String name : names) {
+            items.add(new User(name));
+        }
+    }
+
+    @Reply("JOIN")
+    public void join(IRCEvent e) {
+        IRCMessage msg = e.getMessage();
+        String nick = msg.getPrefix().getNick();
+        String channel = msg.getTrail();
+        log.log(Level.INFO, "join: {0} {1} ({2})", new Object[]{channel, nick, nick.equals(irc.getUserNick())});
+        if (nick.equals(irc.getUserNick())) {
+            addChannel(channel);
+        }
+    }
+
+    @Reply("353")
+    public void names(IRCEvent e) {
+        IRCMessage msg = e.getMessage();
+        String channel = msg.getParam2();
+        String[] names = msg.getTrail().split(" ");
+        log.log(Level.INFO, "names: {0} {1}", new Object[]{channel, Arrays.asList(names)});
+        addUser(channel, names);
     }
 
     @Reply("PRIVMSG")
