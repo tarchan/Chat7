@@ -64,7 +64,7 @@
                 <TextArea id="displayBox" fx:id="console" editable="false" focusTraversable="false" prefHeight="252.0" prefWidth="640.0" wrapText="true" HBox.hgrow="ALWAYS" />
                 <Accordion HBox.hgrow="NEVER">
                   <expandedPane>
-                    <TitledPane fx:id="x1" animated="false" text="Channels">
+                    <TitledPane id="channelTile" fx:id="channelTile2" animated="false" text="Channels">
                       <content>
                         <AnchorPane id="Content" minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
                           <children>
@@ -80,8 +80,8 @@
                     </TitledPane>
                   </expandedPane>
                   <panes>
-                    <fx:reference source="x1" />
-                    <TitledPane animated="false" text="Users">
+                    <fx:reference source="channelTile2" />
+                    <TitledPane fx:id="userTile" animated="false" text="Users">
                       <content>
                         <AnchorPane id="Content" minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
                           <children>
