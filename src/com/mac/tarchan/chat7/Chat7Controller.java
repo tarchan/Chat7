@@ -7,7 +7,6 @@ package com.mac.tarchan.chat7;
 import com.mac.tarchan.irc.client.IRCClient;
 import com.mac.tarchan.irc.client.IRCEvent;
 import com.mac.tarchan.irc.client.IRCMessage;
-import com.mac.tarchan.irc.client.NumericReply;
 import static com.mac.tarchan.irc.client.NumericReply.*;
 import com.mac.tarchan.irc.client.Reply;
 import com.mac.tarchan.irc.client.util.KanaInputFilter;
@@ -23,7 +22,6 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.ResourceBundle;
@@ -35,7 +33,9 @@ import javafx.application.Application.Parameters;
 import javafx.application.Platform;
 import javafx.beans.property.Property;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.collections.FXCollections;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
@@ -43,6 +43,7 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -76,15 +77,15 @@ public class Chat7Controller implements Initializable {
 
     public class Room {
 
-        public String name;
+        public SimpleStringProperty name = new SimpleStringProperty(this, "name");
         public String[] users;
 
         Room(String name) {
-            this.name = name;
+            this.name.set(name);
         }
 
         public String getName() {
-            return name;
+            return name.get();
         }
     }
 
@@ -115,7 +116,8 @@ public class Chat7Controller implements Initializable {
     private ReadLogService readLogService = new ReadLogService();
     private IRCClient irc;
     private IrcService ircService = new IrcService();
-    private String target = "#javabreak";
+    @FXML
+    private Label target;
     @FXML
     private VBox root;
     @FXML
@@ -148,7 +150,7 @@ public class Chat7Controller implements Initializable {
 
 //        console.appendText(String.format("%s%n", text));
         talk(System.currentTimeMillis(), irc.getUserNick(), text);
-        irc.privmsg(target, text);
+        irc.privmsg(target.getText(), text);
     }
 
     @FXML
@@ -202,6 +204,13 @@ public class Chat7Controller implements Initializable {
         items.add(new Room("#dameTunes"));
         items.add(new Room("#irodorie:*.jp"));
         channels.setItems(items);
+
+        channels.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Room>() {
+            @Override
+            public void changed(ObservableValue<? extends Room> self, Room oldValue, Room newValue) {
+                target.textProperty().bind(newValue.name);
+            }
+        });
     }
 
     private void connect() {
@@ -243,7 +252,7 @@ public class Chat7Controller implements Initializable {
         protected String call() throws Exception {
             connect();
             while (true) {
-                String line = irc.next();
+                String line = irc.readMessage();
                 if (line == null) {
                     break;
                 }
@@ -266,7 +275,7 @@ public class Chat7Controller implements Initializable {
         console.appendText(String.format("IRCに接続しました。: %s%n", trail));
         channels.getItems().clear();
         users.getItems().clear();
-        irc.join(target);
+        irc.join(target.getText());
     }
 
     @Reply(value = "PING", property = "message.trail")

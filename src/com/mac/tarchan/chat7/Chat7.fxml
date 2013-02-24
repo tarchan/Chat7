@@ -101,9 +101,10 @@
             </HBox>
             <HBox fillHeight="false" minHeight="20.0" prefHeight="33.999900000002526" prefWidth="640.0" VBox.vgrow="NEVER">
               <children>
+                <Label fx:id="target" text="Target" HBox.hgrow="NEVER" />
                 <TextField id="inputBox" fx:id="input" onAction="#handleSend" prefWidth="200.0" HBox.hgrow="ALWAYS">
                   <HBox.margin>
-                    <Insets right="8.0" />
+                    <Insets left="8.0" right="8.0" />
                   </HBox.margin>
                 </TextField>
                 <Button id="sendButton" fx:id="send" mnemonicParsing="false" onAction="#handleSend" text="送信" HBox.hgrow="NEVER">
@@ -118,12 +119,12 @@
             </HBox>
           </children>
         </VBox>
-        <Region fx:id="glass" prefHeight="200.0" prefWidth="200.0" styleClass="veil" StackPane.alignment="CENTER">
+        <Region fx:id="glass" prefHeight="200.0" prefWidth="200.0" styleClass="veil" visible="false" StackPane.alignment="CENTER">
           <stylesheets>
             <URL value="@chat7.css" />
           </stylesheets>
         </Region>
-        <ProgressIndicator id="progress" fx:id="loading" maxHeight="44.0" maxWidth="44.0" prefHeight="-1.0" prefWidth="-1.0" progress="0.0" StackPane.alignment="CENTER" />
+        <ProgressIndicator id="progress" fx:id="loading" maxHeight="44.0" maxWidth="44.0" prefHeight="-1.0" prefWidth="-1.0" progress="0.0" visible="false" StackPane.alignment="CENTER" />
       </children>
     </StackPane>
   </children>
