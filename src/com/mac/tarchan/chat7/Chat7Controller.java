@@ -34,6 +34,7 @@ import javafx.application.Platform;
 import javafx.beans.property.Property;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ObservableList;
@@ -62,46 +63,6 @@ import javafx.stage.FileChooser;
 public class Chat7Controller implements Initializable {
 
     private static final Logger log = Logger.getLogger(Chat7Controller.class.getName());
-    @FXML
-    private TableView<Room> channels;
-    @FXML
-    private TableView<User> users;
-    @FXML
-    private TableColumn<Room, String> channelName;
-    @FXML
-    private TableColumn<Room, String> channelMode;
-    @FXML
-    private TableColumn<User, String> userName;
-    @FXML
-    private TableColumn<User, String> userMode;
-
-    public class Room {
-
-        public SimpleStringProperty name = new SimpleStringProperty(this, "name");
-        public String[] users;
-
-        Room(String name) {
-            this.name.set(name);
-        }
-
-        public String getName() {
-            return name.get();
-        }
-    }
-
-    public class User {
-
-        private String name;
-        private String mode;
-
-        User(String name) {
-            this.name = name;
-        }
-
-        public String getName() {
-            return name;
-        }
-    }
 
     static {
         ConsoleHandler handler = new ConsoleHandler();
@@ -132,6 +93,18 @@ public class Chat7Controller implements Initializable {
     private ProgressIndicator loading;
     @FXML
     private TitledPane x1;
+    @FXML
+    private TableView<Room> channels;
+    @FXML
+    private TableView<User> users;
+    @FXML
+    private TableColumn<Room, String> channelName;
+    @FXML
+    private TableColumn<Room, String> channelMode;
+    @FXML
+    private TableColumn<User, String> userName;
+    @FXML
+    private TableColumn<User, String> userMode;
 
     public Property<File> fileProperty() {
         return file;
@@ -275,7 +248,7 @@ public class Chat7Controller implements Initializable {
         console.appendText(String.format("IRCに接続しました。: %s%n", trail));
         channels.getItems().clear();
         users.getItems().clear();
-        irc.join(target.getText());
+//        irc.join(target.getText());
     }
 
     @Reply(value = "PING", property = "message.trail")
@@ -289,7 +262,7 @@ public class Chat7Controller implements Initializable {
         IRCMessage msg = e.getMessage();
         String oldNick = msg.getPrefix().getNick();
         String newNick = msg.getTrail();
-        echo(String.format("nick change %s to %s.", oldNick, newNick));
+        echo(String.format("ニックネーム変更: %s to %s.", oldNick, newNick));
         if (irc.getUserNick().equals(oldNick)) {
             irc.setUserNick(newNick);
         }
@@ -304,7 +277,9 @@ public class Chat7Controller implements Initializable {
     private void addUser(String channel, String[] names) {
         ObservableList<User> items = users.getItems();
         for (String name : names) {
-            items.add(new User(name));
+            User user = new User(name);
+            user.mode.set(channel);
+            items.add(user);
         }
     }
 
@@ -313,18 +288,40 @@ public class Chat7Controller implements Initializable {
         IRCMessage msg = e.getMessage();
         String nick = msg.getPrefix().getNick();
         String channel = msg.getTrail();
-        log.log(Level.INFO, "join: {0} {1} ({2})", new Object[]{channel, nick, nick.equals(irc.getUserNick())});
+        log.log(Level.INFO, "入室: {0} {1} ({2})", new Object[]{channel, nick, nick.equals(irc.getUserNick())});
         if (nick.equals(irc.getUserNick())) {
             addChannel(channel);
         }
     }
 
-    @Reply("353")
+    private Room findRoom(String name) {
+        for (Room room : channels.getItems()) {
+            if (room.name.get().equals(name)) {
+                return room;
+            }
+        }
+        return null;
+    }
+
+    @Reply(RPL_TOPIC)
+    public void topic(IRCEvent e) {
+        IRCMessage msg = e.getMessage();
+        String topic = msg.getTrail();
+        String channel = msg.getParam1();
+        int pos = channels.getItems().indexOf(channel);
+        Room room = findRoom(channel);
+        log.log(Level.INFO, "トピック: {0}({2}): {1}", new Object[]{channel, topic, room});
+        if (room != null) {
+            room.topic.set(topic);
+        }
+    }
+
+    @Reply(RPL_NAMREPLY)
     public void names(IRCEvent e) {
         IRCMessage msg = e.getMessage();
         String channel = msg.getParam2();
         String[] names = msg.getTrail().split(" ");
-        log.log(Level.INFO, "names: {0} {1}", new Object[]{channel, Arrays.asList(names)});
+        log.log(Level.INFO, "ユーザーリスト: {0} {1}", new Object[]{channel, Arrays.asList(names)});
         addUser(channel, names);
     }
 
@@ -335,6 +332,15 @@ public class Chat7Controller implements Initializable {
         String text = msg.getTrail();
         long when = msg.getWhen();
         talk(when, nick, text);
+    }
+
+    @Reply("NOTICE")
+    public void notice(IRCEvent e) {
+        IRCMessage msg = e.getMessage();
+//        String nick = msg.getPrefix().getNick();
+        String text = msg.getTrail();
+//        long when = msg.getWhen();
+        echo(text);
     }
 
     private static String getTimeString(long when) {
@@ -423,6 +429,52 @@ public class Chat7Controller implements Initializable {
                 log.log(Level.SEVERE, "ファイルを読み込めません。", ex);
                 throw ex;
             }
+        }
+    }
+
+    public class Room {
+
+        public StringProperty name = new SimpleStringProperty(this, "name");
+        public StringProperty topic = new SimpleStringProperty(this, "topic");
+        public String[] users;
+
+        Room(String name) {
+            this.name.set(name);
+        }
+
+//        @Override
+//        public boolean equals(Object other) {
+//            log.info("比較します。: " + other);
+//            if (other instanceof String) {
+//                return name.get().equals(other);
+//            }
+//            return this == other;
+//        }
+
+        public String getName() {
+            return name.get();
+        }
+
+        public String getMode() {
+            return topic.get();
+        }
+    }
+
+    public class User {
+
+        public StringProperty name = new SimpleStringProperty(this, "name");
+        public StringProperty mode = new SimpleStringProperty(this, "mode");
+
+        User(String name) {
+            this.name.set(name);
+        }
+
+        public String getName() {
+            return name.get();
+        }
+
+        public String getMode() {
+            return mode.get();
         }
     }
 }
