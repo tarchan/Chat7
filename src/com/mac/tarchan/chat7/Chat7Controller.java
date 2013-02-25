@@ -37,6 +37,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
@@ -61,9 +62,9 @@ import javafx.stage.FileChooser;
  * @author Takashi Ogura <tarchan at mac.com>
  */
 public class Chat7Controller implements Initializable {
-    
+
     private static final Logger log = Logger.getLogger(Chat7Controller.class.getName());
-    
+
     static {
         ConsoleHandler handler = new ConsoleHandler();
         handler.setFormatter(new SimpleFormatter());
@@ -77,6 +78,7 @@ public class Chat7Controller implements Initializable {
     private ReadLogService readLogService = new ReadLogService();
     private IRCClient irc;
     private IrcService ircService = new IrcService();
+    private Spec spec = new Spec();
     @FXML
     private Label target;
     @FXML
@@ -107,11 +109,11 @@ public class Chat7Controller implements Initializable {
     private TitledPane userTile;
     @FXML
     private TitledPane channelTile;
-    
+
     public Property<File> fileProperty() {
         return file;
     }
-    
+
     @FXML
     private void handleSend(ActionEvent e) {
         String text = input.textProperty().get();
@@ -123,11 +125,10 @@ public class Chat7Controller implements Initializable {
             return;
         }
 
-//        console.appendText(String.format("%s%n", text));
         echo(System.currentTimeMillis(), irc.getUserNick(), text);
         irc.privmsg(target.getText(), text);
     }
-    
+
     @FXML
     private void handleOpen(ActionEvent e) {
         log.info("ファイルを選択します。");
@@ -138,18 +139,18 @@ public class Chat7Controller implements Initializable {
 //            openFile(f.toPath());
         }
     }
-    
+
     @FXML
     private void handleConnect(ActionEvent e) {
         ircService.start();
     }
-    
+
     @FXML
     private void handleExit(ActionEvent e) {
         log.log(Level.INFO, "アプリケーションを終了します。");
         Platform.exit();
     }
-    
+
     @Override
     public void initialize(URL url, ResourceBundle rb) {
 //        FileChooser.ExtensionFilter allFilter = new FileChooser.ExtensionFilter("すべてのファイル (*.*)", "*.*");
@@ -169,25 +170,18 @@ public class Chat7Controller implements Initializable {
         channelMode.setCellValueFactory(new PropertyValueFactory<Room, String>("mode"));
         userName.setCellValueFactory(new PropertyValueFactory<User, String>("name"));
         userMode.setCellValueFactory(new PropertyValueFactory<User, String>("mode"));
-//        ArrayList<Room> list = new ArrayList<>();
-//        Room room1 = new Room("#javabreak");
-//        room1.name = "#javabreak";
-//        list.add(room1);
-//        ObservableList<Room> items = FXCollections.observableArrayList();
-        ObservableList<Room> items = channels.getItems();
-        items.add(new Room("#javabreak"));
-        items.add(new Room("#dameTunes"));
-        items.add(new Room("#irodorie:*.jp"));
-        channels.setItems(items);
-        
+
+        channels.setItems(spec.rooms);
         channels.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Room>() {
             @Override
             public void changed(ObservableValue<? extends Room> self, Room oldValue, Room newValue) {
                 target.textProperty().bind(newValue.name);
+                Room room = spec.findRoom(newValue.name.get());
+                users.setItems(room.users);
             }
         });
     }
-    
+
     private void connect() {
         try {
             log.info("IRCに接続します。");
@@ -212,17 +206,17 @@ public class Chat7Controller implements Initializable {
             irc = null;
         }
     }
-    
+
     class IrcService extends Service<String> {
-        
+
         @Override
         protected Task<String> createTask() {
             return new IrcTask();
         }
     }
-    
+
     class IrcTask extends Task<String> {
-        
+
         @Override
         protected String call() throws Exception {
             connect();
@@ -238,12 +232,12 @@ public class Chat7Controller implements Initializable {
             return null;
         }
     }
-    
+
     @Reply(value = RPL_HELLO, property = "message.trail")
     public void hello(String trail) {
         console.appendText(String.format("しばらくお待ちください。: %s%n", trail));
     }
-    
+
     @Reply(value = RPL_WELCOME, property = "message.trail")
     public void welcome(String trail) {
         log.log(Level.INFO, "IRCに接続しました。: {0}", trail);
@@ -252,13 +246,13 @@ public class Chat7Controller implements Initializable {
         users.getItems().clear();
 //        irc.join(target.getText());
     }
-    
+
     @Reply(value = "PING", property = "message.trail")
     public void ping(String trail) {
         log.log(Level.INFO, "継続します。: {0}", trail);
         irc.pong(trail);
     }
-    
+
     @Reply("NICK")
     public void nick(IRCEvent e) {
         IRCMessage msg = e.getMessage();
@@ -269,22 +263,7 @@ public class Chat7Controller implements Initializable {
             irc.setUserNick(newNick);
         }
     }
-    
-    private void addChannel(String name) {
-        Room room = new Room(name);
-        ObservableList<Room> items = channels.getItems();
-        items.add(room);
-    }
-    
-    private void addUser(String channel, String[] names) {
-        ObservableList<User> items = users.getItems();
-        for (String name : names) {
-            User user = new User(name);
-            user.mode.set(channel);
-            items.add(user);
-        }
-    }
-    
+
     @Reply("JOIN")
     public void join(IRCEvent e) {
         IRCMessage msg = e.getMessage();
@@ -292,41 +271,31 @@ public class Chat7Controller implements Initializable {
         String channel = msg.getTrail();
         log.log(Level.INFO, "入室: {0} {1} ({2})", new Object[]{channel, nick, nick.equals(irc.getUserNick())});
         if (nick.equals(irc.getUserNick())) {
-            addChannel(channel);
+            spec.addRoom(channel);
         }
     }
-    
-    private Room findRoom(String name) {
-        for (Room room : channels.getItems()) {
-            if (room.name.get().equals(name)) {
-                return room;
-            }
-        }
-        return null;
-    }
-    
+
     @Reply(RPL_TOPIC)
     public void topic(IRCEvent e) {
         IRCMessage msg = e.getMessage();
         String topic = msg.getTrail();
         String channel = msg.getParam1();
-        int pos = channels.getItems().indexOf(channel);
-        Room room = findRoom(channel);
+        Room room = spec.findRoom(channel);
         log.log(Level.INFO, "トピック: {0}({2}): {1}", new Object[]{channel, topic, room});
         if (room != null) {
             room.topic.set(topic);
         }
     }
-    
+
     @Reply(RPL_NAMREPLY)
     public void names(IRCEvent e) {
         IRCMessage msg = e.getMessage();
         String channel = msg.getParam2();
         String[] names = msg.getTrail().split(" ");
         log.log(Level.INFO, "ユーザーリスト: {0} {1}", new Object[]{channel, Arrays.asList(names)});
-        addUser(channel, names);
+        spec.addUser(channel, names);
     }
-    
+
     @Reply("PRIVMSG")
     public void talk(IRCEvent e) {
         IRCMessage msg = e.getMessage();
@@ -335,7 +304,7 @@ public class Chat7Controller implements Initializable {
         long when = msg.getWhen();
         echo(when, nick, text);
     }
-    
+
     @Reply("NOTICE")
     public void notice(IRCEvent e) {
         IRCMessage msg = e.getMessage();
@@ -345,20 +314,20 @@ public class Chat7Controller implements Initializable {
         long when = msg.getWhen();
         echo(when, nick, text);
     }
-    
+
     private static String getTimeString(long when) {
         return String.format("%tH:%<tM", when);
     }
-    
+
     private void echo(String text) {
         long when = System.currentTimeMillis();
         console.appendText(String.format("%s %s%n", getTimeString(when), text));
     }
-    
+
     private void echo(long when, String nick, String text) {
         console.appendText(String.format("%s %s: %s%n", getTimeString(when), nick, text));
     }
-    
+
     private void openFile(Path path) {
         log.log(Level.INFO, "ファイルをオープンします。: {0}", path);
         int lineCount = 0;
@@ -369,7 +338,7 @@ public class Chat7Controller implements Initializable {
                 if (line == null) {
                     break;
                 }
-                
+
                 lineCount++;
                 console.appendText(String.format("%s%n", line));
             }
@@ -378,7 +347,7 @@ public class Chat7Controller implements Initializable {
             log.log(Level.SEVERE, "ファイルを読み込めません。", ex);
         }
     }
-    
+
     private static BufferedReader newBufferedReader(Path path, Charset cs) throws IOException {
         InputStream input = Files.newInputStream(path);
         log.log(Level.CONFIG, "文字コード: {0}", cs.displayName());
@@ -390,24 +359,24 @@ public class Chat7Controller implements Initializable {
         Reader reader = new InputStreamReader(input, decoder);
         return new BufferedReader(reader);
     }
-    
+
     class ReadLogService extends Service<String> {
-        
+
         @Override
         protected Task<String> createTask() {
 //            file = TwoFaceController.this.file.get();
             return new ReadLogTask(fileProperty().getValue().toPath());
         }
     }
-    
+
     class ReadLogTask extends Task<String> {
-        
+
         private Path path;
-        
+
         ReadLogTask(Path path) {
             this.path = path;
         }
-        
+
         @Override
         protected String call() throws Exception {
             log.log(Level.INFO, "ファイルをオープンします。: {0}", path);
@@ -420,7 +389,7 @@ public class Chat7Controller implements Initializable {
                     if (line == null) {
                         break;
                     }
-                    
+
                     lineCount++;
 //                    console.appendText(String.format("%s%n", line));
                     buf.append(String.format("%s%n", line));
@@ -434,13 +403,54 @@ public class Chat7Controller implements Initializable {
             }
         }
     }
-    
+
+    public class Spec {
+
+        public String host;
+        public int port;
+        public String encoding;
+        public String nick;
+        public String user;
+        public String real;
+        public int mode;
+        public String pass;
+        public ObservableList<Room> rooms = FXCollections.observableArrayList();
+        public ObservableList<User> users = FXCollections.observableArrayList();
+
+        public Room addRoom(String name) {
+            Room room = new Room(name);
+            rooms.add(room);
+            return room;
+        }
+
+        public Room findRoom(String name) {
+            for (Room room : rooms) {
+                if (room.name.get().equals(name)) {
+                    return room;
+                }
+            }
+            return null;
+        }
+
+        private void addUser(String channel, String[] names) {
+            for (String name : names) {
+                User user = new User(name);
+                user.mode.set(channel);
+                users.add(user);
+                Room room = findRoom(channel);
+                if (room != null) {
+                    room.users.add(user);
+                }
+            }
+        }
+    }
+
     public class Room {
-        
+
         public StringProperty name = new SimpleStringProperty(this, "name");
         public StringProperty topic = new SimpleStringProperty(this, "topic");
-        public String[] users;
-        
+        public ObservableList<User> users = FXCollections.observableArrayList();
+
         Room(String name) {
             this.name.set(name);
         }
@@ -456,25 +466,25 @@ public class Chat7Controller implements Initializable {
         public String getName() {
             return name.get();
         }
-        
+
         public String getMode() {
             return topic.get();
         }
     }
-    
+
     public class User {
-        
+
         public StringProperty name = new SimpleStringProperty(this, "name");
         public StringProperty mode = new SimpleStringProperty(this, "mode");
-        
+
         User(String name) {
             this.name.set(name);
         }
-        
+
         public String getName() {
             return name.get();
         }
-        
+
         public String getMode() {
             return mode.get();
         }
