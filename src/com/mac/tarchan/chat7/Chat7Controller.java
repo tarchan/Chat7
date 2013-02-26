@@ -220,13 +220,8 @@ public class Chat7Controller implements Initializable {
         @Override
         protected String call() throws Exception {
             connect();
-            while (true) {
-                String line = irc.readMessage();
-                if (line == null) {
-                    break;
-                }
+            for (String line : irc) {
                 updateMessage(line);
-//                Thread.sleep(10);
             }
             log.log(Level.INFO, "IRCを切断します。: {0}", irc);
             return null;
