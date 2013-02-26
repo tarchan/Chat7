@@ -230,13 +230,13 @@ public class Chat7Controller implements Initializable {
 
     @Reply(value = RPL_HELLO, property = "message.trail")
     public void hello(String trail) {
-        console.appendText(String.format("しばらくお待ちください。: %s%n", trail));
+        echo(String.format("しばらくお待ちください。: %s%n", trail));
     }
 
     @Reply(value = RPL_WELCOME, property = "message.trail")
     public void welcome(String trail) {
         log.log(Level.INFO, "IRCに接続しました。: {0}", trail);
-        console.appendText(String.format("IRCに接続しました。: %s%n", trail));
+        echo(String.format("IRCに接続しました。: %s%n", trail));
         channels.getItems().clear();
         users.getItems().clear();
 //        irc.join(target.getText());
@@ -253,7 +253,7 @@ public class Chat7Controller implements Initializable {
         IRCMessage msg = e.getMessage();
         String oldNick = msg.getPrefix().getNick();
         String newNick = msg.getTrail();
-        echo(String.format("ニックネーム変更: %s to %s.", oldNick, newNick));
+        echo(String.format("ニックネーム変更: %s -> %s", oldNick, newNick));
         if (irc.getUserNick().equals(oldNick)) {
             irc.setUserNick(newNick);
         }
